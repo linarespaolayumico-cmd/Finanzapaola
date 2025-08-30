@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Finanzas Personales</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .tab-button.active {
+            background-color: #ffffff;
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Header and User ID -->
+    <header class="bg-white p-6 rounded-2xl shadow-md mb-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800">Gestor de Finanzas</h1>
+        <p id="userIdDisplay" class="text-sm text-gray-500 text-center mt-2 break-all"></p>
+        <div id="statusMessage" class="text-center mt-2 p-2 rounded-lg text-sm font-semibold"></div>
+    </header>
+
+    <!-- Tabs for different sections -->
+    <div class="bg-white p-2 rounded-2xl shadow-md mb-6 flex flex-wrap justify-center gap-2">
+        <button id="tab-registro" class="tab-button p-3 rounded-xl font-medium text-gray-600 transition-all hover:bg-gray-100 active">Registro de Transacciones</button>
+        <button id="tab-presupuestos" class="tab-button p-3 rounded-xl font-medium text-gray-600 transition-all hover:bg-gray-100">Presupuestos</button>
+        <button id="tab-conciliacion" class="tab-button p-3 rounded-xl font-medium text-gray-600 transition-all hover:bg-gray-100">Conciliación Bancaria</button>
+        <button id="tab-dashboard" class="tab-button p-3 rounded-xl font-medium text-gray-600 transition-all hover:bg-gray-100">Tablero de Control</button>
+    </div>
+
+    <!-- Main Content Containers -->
+    <main class="bg-white p-6 rounded-2xl shadow-md">
+        
+        <!-- Hoja 1: Registro de Transacciones -->
+        <div id="content-registro" class="tab-content">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Registro de Transacciones</h2>
+            
+            <form id="transactionForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Fecha -->
+                <div class="flex flex-col">
+                    <label for="fecha" class="text-sm font-medium text-gray-600 mb-1">Fecha</label>
+                    <input type="date" id="fecha" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                </div>
+                <!-- Cuenta Bancaria -->
+                <div class="flex flex-col">
+                    <label for="cuenta" class="text-sm font-medium text-gray-600 mb-1">Cuenta Bancaria Origen</label>
+                    <select id="cuenta" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                        <option value="">Seleccione...</option>
+                        <option value="Banco del Reserva (Aikido - Aiki Life)">Banco del Reserva (Aikido - Aiki Life)</option>
+                        <option value="Banco Popular Nomina">Banco Popular Nomina</option>
+                        <option value="Banco Popular Ahorros">Banco Popular Ahorros</option>
+                        <option value="Banco del Reserva Tarjeta Credito">Banco del Reserva Tarjeta Credito</option>
+                    </select>
+                </div>
+                <!-- Tipo -->
+                <div class="flex flex-col">
+                    <label for="tipo" class="text-sm font-medium text-gray-600 mb-1">Tipo</label>
+                    <select id="tipo" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                        <option value="">Seleccione...</option>
+                        <option value="Ingreso">Ingreso</option>
+                        <option value="Gasto">Gasto</option>
+                        <option value="Movimiento">Movimiento entre Cuentas</option>
+                        <option value="PagoTarjeta">Pago de Tarjeta de Crédito</option>
+                    </select>
+                </div>
+                <!-- Categoría -->
+                <div class="flex flex-col">
+                    <label for="categoria" class="text-sm font-medium text-gray-600 mb-1">Categoría</label>
+                    <select id="categoria" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                 <!-- Cuenta Destino (solo para movimientos) -->
+                <div id="cuentaDestinoContainer" class="flex flex-col hidden">
+                    <label for="cuentaDestino" class="text-sm font-medium text-gray-600 mb-1">Cuenta Bancaria Destino</label>
+                    <select id="cuentaDestino" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <!-- Descripción -->
+                <div class="flex flex-col md:col-span-2">
+                    <label for="descripcion" class="text-sm font-medium text-gray-600 mb-1">Descripción</label>
+                    <input type="text" id="descripcion" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                </div>
+                <!-- Cantidad -->
+                <div class="flex flex-col">
+                    <label for="cantidad" class="text-sm font-medium text-gray-600 mb-1">Cantidad</label>
+                    <input type="number" id="cantidad" required class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                </div>
+                <!-- Botón -->
+                <div class="flex items-end mt-4 md:col-span-1 lg:col-span-1">
+                    <button type="submit" class="w-full p-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors duration-200">Añadir Transacción</button>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cuenta</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cantidad</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTable" class="bg-white divide-y divide-gray-200">
+                        <!-- Transactions will be populated here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Hoja 2: Presupuestos -->
+        <div id="content-presupuestos" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Presupuestos Mensuales</h2>
+            <p class="text-gray-600 mb-6">Establece tus límites de gasto para cada categoría. Estos presupuestos son de carácter mensual.</p>
+
+            <div id="budgetsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Budget inputs will be generated here by JavaScript -->
+            </div>
+
+            <button id="saveBudgetsBtn" class="w-full p-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors duration-200">
+                Guardar Presupuestos
+            </button>
+        </div>
+
+        <!-- Hoja 3: Conciliación Bancaria -->
+        <div id="content-conciliacion" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Conciliación Bancaria</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Conciliación por Cuenta -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Banco del Reserva (Aikido - Aiki Life)</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Saldo Inicial: <span id="bancoDelReservaAikidoAikiLifeSaldoInicial" class="font-bold text-gray-800"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Ingresos: <span id="bancoDelReservaAikidoAikiLifeIngresos" class="font-bold text-green-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Gastos: <span id="bancoDelReservaAikidoAikiLifeGastos" class="font-bold text-red-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium border-t pt-2">Saldo Proyectado: <span id="bancoDelReservaAikidoAikiLifeSaldoProyectado" class="font-bold text-gray-800"></span></p>
+                        <div class="flex items-center space-x-2 mt-4">
+                            <label for="bancoDelReservaAikidoAikiLifeSaldoReal" class="text-sm text-gray-600 font-medium whitespace-nowrap">Saldo Real:</label>
+                            <input type="number" id="bancoDelReservaAikidoAikiLifeSaldoReal" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                        </div>
+                        <p class="text-sm text-gray-600 font-medium mt-2">Diferencia: <span id="bancoDelReservaAikidoAikiLifeDiferencia" class="font-bold"></span></p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Banco Popular Nomina</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Saldo Inicial: <span id="bancoPopularNominaSaldoInicial" class="font-bold text-gray-800"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Ingresos: <span id="bancoPopularNominaIngresos" class="font-bold text-green-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Gastos: <span id="bancoPopularNominaGastos" class="font-bold text-red-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium border-t pt-2">Saldo Proyectado: <span id="bancoPopularNominaSaldoProyectado" class="font-bold text-gray-800"></span></p>
+                        <div class="flex items-center space-x-2 mt-4">
+                            <label for="bancoPopularNominaSaldoReal" class="text-sm text-gray-600 font-medium whitespace-nowrap">Saldo Real:</label>
+                            <input type="number" id="bancoPopularNominaSaldoReal" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                        </div>
+                        <p class="text-sm text-gray-600 font-medium mt-2">Diferencia: <span id="bancoPopularNominaDiferencia" class="font-bold"></span></p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Banco Popular Ahorros</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Saldo Inicial: <span id="bancoPopularAhorrosSaldoInicial" class="font-bold text-gray-800"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Ingresos: <span id="bancoPopularAhorrosIngresos" class="font-bold text-green-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Gastos: <span id="bancoPopularAhorrosGastos" class="font-bold text-red-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium border-t pt-2">Saldo Proyectado: <span id="bancoPopularAhorrosSaldoProyectado" class="font-bold text-gray-800"></span></p>
+                        <div class="flex items-center space-x-2 mt-4">
+                            <label for="bancoPopularAhorrosSaldoReal" class="text-sm text-gray-600 font-medium whitespace-nowrap">Saldo Real:</label>
+                            <input type="number" id="bancoPopularAhorrosSaldoReal" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                        </div>
+                        <p class="text-sm text-gray-600 font-medium mt-2">Diferencia: <span id="bancoPopularAhorrosDiferencia" class="font-bold"></span></p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Banco del Reserva Tarjeta Credito</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Saldo Inicial: <span id="bancoDelReservaTarjetaCreditoSaldoInicial" class="font-bold text-gray-800"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Ingresos: <span id="bancoDelReservaTarjetaCreditoIngresos" class="font-bold text-green-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total Gastos: <span id="bancoDelReservaTarjetaCreditoGastos" class="font-bold text-red-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium border-t pt-2">Saldo Proyectado: <span id="bancoDelReservaTarjetaCreditoSaldoProyectado" class="font-bold text-gray-800"></span></p>
+                        <div class="flex items-center space-x-2 mt-4">
+                            <label for="bancoDelReservaTarjetaCreditoSaldoReal" class="text-sm text-gray-600 font-medium whitespace-nowrap">Saldo Real:</label>
+                            <input type="number" id="bancoDelReservaTarjetaCreditoSaldoReal" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                        </div>
+                        <p class="text-sm text-gray-600 font-medium mt-2">Diferencia: <span id="bancoDelReservaTarjetaCreditoDiferencia" class="font-bold"></span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 text-yellow-800 p-4 rounded-lg mt-6 text-sm">
+                <p><strong>Nota:</strong> Los saldos iniciales se guardan en el navegador y deben ser actualizados manualmente. Los totales de ingresos y gastos se calculan automáticamente a partir de tus transacciones registradas.</p>
+            </div>
+        </div>
+
+        <!-- Hoja 4: Tablero de Control -->
+        <div id="content-dashboard" class="tab-content hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Tablero de Control</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Resumen de Ingresos y Gastos -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Resumen del Mes</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Total de Ingresos: <span id="totalIngresosMes" class="font-bold text-green-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Total de Gastos: <span id="totalGastosMes" class="font-bold text-red-600"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Balance Neto: <span id="balanceNeto" class="font-bold text-gray-800"></span></p>
+                    </div>
+                </div>
+                <!-- Resumen de Presupuestos -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Resumen de Presupuestos</h3>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-600 font-medium">Presupuesto Total: <span id="totalBudget" class="font-bold text-gray-800"></span></p>
+                        <p class="text-sm text-gray-600 font-medium">Gasto Restante: <span id="remainingBudget" class="font-bold text-gray-800"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Gráfico de Ingresos -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Distribución de Ingresos</h3>
+                    <canvas id="ingresosChart"></canvas>
+                </div>
+                <!-- Gráfico de Gastos -->
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Distribución de Gastos</h3>
+                    <canvas id="gastosChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-3">Progreso de Presupuestos por Categoría</h3>
+                <div id="budgetProgressContainer" class="space-y-4">
+                    <!-- Progress bars will be rendered here -->
+                </div>
+            </div>
+
+
+            <!-- Nuevo: Análisis de Finanzas con Gemini -->
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-3">Análisis de Finanzas con Gemini</h3>
+                <p class="text-sm text-gray-600 mb-4">Haz clic para recibir un resumen inteligente de tus gastos y consejos personalizados para ahorrar.</p>
+                <div class="flex items-center space-x-2">
+                    <button id="geminiAnalyzeBtn" class="p-3 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors duration-200 flex-grow disabled:opacity-50">
+                        Obtener Análisis ✨
+                    </button>
+                    <div id="loadingSpinner" class="hidden loading-spinner"></div>
+                </div>
+                <div id="geminiResult" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                    <p class="text-sm text-gray-800"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase and Chart.js CDN -->
+    <script type="module">
+        // Import Firebase modules for cloud database
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, serverTimestamp, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import "https://cdn.jsdelivr.net/npm/chart.js";
+
+        // --- Data and Constants ---
+        const cuentas = ["Banco del Reserva (Aikido - Aiki Life)", "Banco Popular Nomina", "Banco Popular Ahorros", "Banco del Reserva Tarjeta Credito"];
+        const ingresosCategorias = ["Ingreso Aikido Mensualidades / inscripciones / examenes", "Ingreso Aiki Life Center", "Ingreso Nomina", "Ingreso venta de artículos", "Otros ingresos"];
+        const gastosCategorias = ["Gasto Personal (Combustible)", "Gasto Personal (Alimentación)", "Gasto Personal (Entretenimiento)", "Gasto Personal (Cuidado personal)", "Gasto Personal (varios)", "Gasto Aikido", "Gasto Aiki Life Center", "Gasto Saori", "Pago Tarjeta", "Movimiento entre cuentas", "Otros gastos", "Suscripciones", "Gastos Bancarios", "Pago a prestamos", "Gastos NPF", "Materiales gastables", "Compra equipos para la venta", "Gastos de representación Aiki Life Center", "Gastos eventos Aiki Life Center", "Gastos eventos Aikido", "Gastos Médicos Teresa", "Pago prestamo Camioneta", "Pago Extracredito popular"];
+        
+        // Mapping for account names to HTML element IDs
+        const cuentaIdMap = {
+            'Banco del Reserva (Aikido - Aiki Life)': 'bancoDelReservaAikidoAikiLife',
+            'Banco Popular Nomina': 'bancoPopularNomina',
+            'Banco Popular Ahorros': 'bancoPopularAhorros',
+            'Banco del Reserva Tarjeta Credito': 'bancoDelReservaTarjetaCredito'
+        };
+
+        let allTransactions = [];
+        let monthlyBudgets = {};
+        let saldosIniciales = {
+            'Banco del Reserva (Aikido - Aiki Life)': 9102.01,
+            'Banco Popular Nomina': 5341.63,
+            'Banco Popular Ahorros': 78208.43,
+            'Banco del Reserva Tarjeta Credito': 836.46
+        };
+
+        // Check for Firebase configuration
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let db, auth;
+        let isCloudMode = false;
+        
+        // Check if firebase config exists to determine data mode
+        if (Object.keys(firebaseConfig).length > 0) {
+            isCloudMode = true;
+            document.getElementById('statusMessage').textContent = 'Conectado a la base de datos de Firebase. Los datos se guardarán en la nube.';
+            document.getElementById('statusMessage').className += ' bg-green-100 text-green-700';
+
+            // Initialize Firebase App
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            setLogLevel('debug'); // Added for debugging
+
+            // Set up a listener for authentication state changes
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // User is signed in.
+                    const userId = user.uid;
+                    document.getElementById('userIdDisplay').innerText = `ID de usuario: ${userId}`;
+                    
+                    // Listener for transactions
+                    const q = query(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+                    onSnapshot(q, (snapshot) => {
+                        allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderUI();
+                    }, (error) => {
+                        console.error("Error fetching transactions:", error);
+                    });
+
+                    // Listener for budgets
+                    const budgetsRef = doc(db, `artifacts/${appId}/users/${userId}/budgets/monthly`);
+                    onSnapshot(budgetsRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            monthlyBudgets = docSnap.data();
+                        } else {
+                            monthlyBudgets = {}; // No budgets set yet
+                        }
+                        renderUI();
+                    }, (error) => {
+                        console.error("Error fetching budgets:", error);
+                    });
+
+                } else {
+                    // No user is signed in. Attempt to sign in.
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error signing in:", error);
+                    }
+                }
+            });
+        } else {
+            // No Firebase config, use localStorage as a fallback
+            document.getElementById('statusMessage').textContent = 'No se encontró la configuración de Firebase. Los datos se guardarán localmente en su navegador.';
+            document.getElementById('statusMessage').className += ' bg-yellow-100 text-yellow-700';
+
+            // Load initial data from localStorage
+            loadLocalData();
+        }
+
+        function loadLocalData() {
+            try {
+                const storedTransactions = localStorage.getItem('transactions');
+                if (storedTransactions) {
+                    allTransactions = JSON.parse(storedTransactions);
+                } else {
+                    allTransactions = [];
+                }
+
+                const storedBudgets = localStorage.getItem('budgets');
+                if (storedBudgets) {
+                    monthlyBudgets = JSON.parse(storedBudgets);
+                } else {
+                    monthlyBudgets = {};
+                }
+            } catch (e) {
+                console.error("Error al cargar datos locales:", e);
+                allTransactions = [];
+                monthlyBudgets = {};
+            }
+            renderUI();
+        }
+
+        function saveLocalData() {
+            try {
+                localStorage.setItem('transactions', JSON.stringify(allTransactions));
+                localStorage.setItem('budgets', JSON.stringify(monthlyBudgets));
+            } catch (e) {
+                console.error("Error al guardar datos locales:", e);
+            }
+        }
+
+        // --- Tab Management ---
+        const tabs = document.querySelectorAll('.tab-button');
+        const contents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                contents.forEach(content => content.classList.add('hidden'));
+                const targetId = tab.id.replace('tab-', 'content-');
+                document.getElementById(targetId).classList.remove('hidden');
+                
+                // Re-render the UI when a tab is clicked to ensure it's up to date
+                renderUI();
+            });
+        });
+
+        // --- Chart.js Setup ---
+        const ctxIngresos = document.getElementById('ingresosChart');
+        const ctxGastos = document.getElementById('gastosChart');
+        let ingresosChart;
+        let gastosChart;
+
+        function initializeCharts() {
+            if (ingresosChart) {
+                ingresosChart.destroy();
+            }
+            if (gastosChart) {
+                gastosChart.destroy();
+            }
+
+            ingresosChart = new Chart(ctxIngresos, {
+                type: 'pie',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#4299e1', '#48bb78', '#f6e05e', '#ed8936', '#9f7aea', '#f687b3'],
+                        hoverBackgroundColor: ['#3b82f6', '#48bb78', '#f6e05e', '#ed8936', '#9f7aea', '#d53a7d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    let label = tooltipItem.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(tooltipItem.raw);
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            gastosChart = new Chart(ctxGastos, {
+                type: 'pie',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: ['#fc8181', '#f6ad55', '#4fd1c5', '#63b3ed', '#a0aec0', '#9f7aea', '#f687b3', '#ecc94b', '#ed8936', '#68d391', '#48bb78', '#e1e1e1', '#b794f4', '#c05621'],
+                        hoverBackgroundColor: ['#e53e3e', '#dd6b20', '#38b2ac', '#4299e1', '#718096', '#805ad5', '#d53a7d', '#d69e2e', '#e56a21', '#42b06a', '#38a169', '#bfbfbf', '#8a62c5', '#b24c16']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    let label = tooltipItem.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(tooltipItem.raw);
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Function to update charts
+        function updateCharts() {
+            const ingresosData = {};
+            const gastosData = {};
+            
+            allTransactions.forEach(t => {
+                if (t.tipo === 'Ingreso' || (t.tipo === 'Movimiento' && t.tipoMovimiento === 'Ingreso') || (t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Ingreso')) {
+                    if(t.tipo === 'Ingreso') {
+                         ingresosData[t.categoria] = (ingresosData[t.categoria] || 0) + t.cantidad;
+                    }
+                    if(t.tipo === 'Movimiento' && t.tipoMovimiento === 'Ingreso'){
+                         ingresosData[t.categoria] = (ingresosData[t.categoria] || 0) + t.cantidad;
+                    }
+                     if(t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Ingreso'){
+                         ingresosData[t.categoria] = (ingresosData[t.categoria] || 0) + t.cantidad;
+                    }
+
+                } else if (t.tipo === 'Gasto' || (t.tipo === 'Movimiento' && t.tipoMovimiento === 'Gasto') || (t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Gasto')) {
+                    if(t.tipo === 'Gasto') {
+                         gastosData[t.categoria] = (gastosData[t.categoria] || 0) + t.cantidad;
+                    }
+                    if(t.tipo === 'Movimiento' && t.tipoMovimiento === 'Gasto'){
+                         gastosData[t.categoria] = (gastosData[t.categoria] || 0) + t.cantidad;
+                    }
+                    if(t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Gasto'){
+                         gastosData[t.categoria] = (gastosData[t.categoria] || 0) + t.cantidad;
+                    }
+                }
+            });
+
+            // Update Ingresos Chart
+            ingresosChart.data.labels = Object.keys(ingresosData);
+            ingresosChart.data.datasets[0].data = Object.values(ingresosData);
+            ingresosChart.update();
+
+            // Update Gastos Chart
+            gastosChart.data.labels = Object.keys(gastosData);
+            gastosChart.data.datasets[0].data = Object.values(gastosData).map(val => Math.abs(val)); // Show positive values
+            gastosChart.update();
+        }
+
+        // --- Firestore/LocalStorage Integration ---
+        async function saveTransaction(transactionData) {
+            if (isCloudMode) {
+                try {
+                    if (auth.currentUser) {
+                        await addDoc(collection(db, `artifacts/${appId}/users/${auth.currentUser.uid}/transactions`), {
+                            ...transactionData,
+                            timestamp: serverTimestamp()
+                        });
+                    } else {
+                        console.error("No hay usuario autenticado. No se puede guardar la transacción.");
+                    }
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                }
+            } else {
+                // Local Storage Mode
+                const newTransaction = {
+                    ...transactionData,
+                    id: crypto.randomUUID(), // Generate a unique ID
+                    timestamp: new Date().toISOString()
+                };
+                allTransactions.push(newTransaction);
+                saveLocalData();
+                renderUI();
+            }
+        }
+        
+        async function deleteTransaction(transactionId) {
+            if (isCloudMode) {
+                try {
+                    if (auth.currentUser) {
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${auth.currentUser.uid}/transactions`, transactionId));
+                    } else {
+                        console.error("No hay usuario autenticado. No se puede eliminar la transacción.");
+                    }
+                } catch (e) {
+                    console.error("Error deleting document: ", e);
+                }
+            } else {
+                // Local Storage Mode
+                allTransactions = allTransactions.filter(t => t.id !== transactionId);
+                saveLocalData();
+                renderUI();
+            }
+        }
+
+        async function saveBudgets(budgets) {
+            if (isCloudMode) {
+                try {
+                    if (auth.currentUser) {
+                        await setDoc(doc(db, `artifacts/${appId}/users/${auth.currentUser.uid}/budgets/monthly`), budgets);
+                        console.log("Budgets saved successfully!");
+                    } else {
+                        console.error("No hay usuario autenticado. No se puede guardar el presupuesto.");
+                    }
+                } catch (e) {
+                    console.error("Error saving budgets: ", e);
+                }
+            } else {
+                // Local Storage Mode
+                monthlyBudgets = budgets;
+                saveLocalData();
+                renderUI();
+            }
+        }
+
+        // --- UI Rendering and Logic ---
+        const transactionForm = document.getElementById('transactionForm');
+        const transactionTable = document.getElementById('transactionTable');
+        const tipoSelect = document.getElementById('tipo');
+        const categoriaSelect = document.getElementById('categoria');
+        const cuentaSelect = document.getElementById('cuenta');
+        const cuentaDestinoContainer = document.getElementById('cuentaDestinoContainer');
+        const cuentaDestinoSelect = document.getElementById('cuentaDestino');
+        const budgetsContainer = document.getElementById('budgetsContainer');
+        const saveBudgetsBtn = document.getElementById('saveBudgetsBtn');
+        
+        // Dynamically populate category and destination dropdowns
+        tipoSelect.addEventListener('change', () => {
+            const tipo = tipoSelect.value;
+            let categorias = [];
+            let cuentasDestino = [];
+            
+            // Show/hide destination account select based on transaction type
+            if (tipo === 'Movimiento') {
+                cuentaDestinoContainer.classList.remove('hidden');
+                cuentasDestino = cuentas.filter(c => c !== cuentaSelect.value);
+                categorias = ["Movimiento entre cuentas"];
+            } else if (tipo === 'PagoTarjeta') {
+                cuentaDestinoContainer.classList.add('hidden');
+                categorias = ["Pago Tarjeta"];
+            } else {
+                cuentaDestinoContainer.classList.add('hidden');
+                if (tipo === 'Ingreso') {
+                    categorias = ingresosCategorias;
+                } else if (tipo === 'Gasto') {
+                    categorias = gastosCategorias;
+                }
+            }
+            
+            // Populate category dropdown
+            categoriaSelect.innerHTML = '<option value="">Seleccione...</option>';
+            categorias.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categoriaSelect.appendChild(option);
+            });
+
+             // Populate destination account dropdown
+            cuentaDestinoSelect.innerHTML = '<option value="">Seleccione...</option>';
+            cuentasDestino.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c;
+                option.textContent = c;
+                cuentaDestinoSelect.appendChild(option);
+            });
+        });
+
+        // Also update destination accounts when source account changes for a transfer
+        cuentaSelect.addEventListener('change', () => {
+             if (tipoSelect.value === 'Movimiento') {
+                const cuentasDestino = cuentas.filter(c => c !== cuentaSelect.value);
+                cuentaDestinoSelect.innerHTML = '<option value="">Seleccione...</option>';
+                cuentasDestino.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c;
+                    option.textContent = c;
+                    cuentaDestinoSelect.appendChild(option);
+                });
+            }
+        });
+        
+        // Handle form submission
+        transactionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fecha = document.getElementById('fecha').value;
+            const cuentaOrigen = document.getElementById('cuenta').value;
+            const tipo = document.getElementById('tipo').value;
+            const categoria = document.getElementById('categoria').value;
+            const descripcion = document.getElementById('descripcion').value;
+            const cantidad = parseFloat(document.getElementById('cantidad').value);
+
+            // Validar que la cantidad sea un número positivo
+            if (isNaN(cantidad) || cantidad <= 0) {
+                // Show a user-friendly message, but for this context, just log it.
+                console.error("La cantidad debe ser un número positivo.");
+                return;
+            }
+
+            if (tipo === 'Movimiento') {
+                 const cuentaDestino = document.getElementById('cuentaDestino').value;
+                 if (!cuentaDestino) {
+                    console.error("Por favor, seleccione una cuenta de destino.");
+                    return;
+                }
+                // Transacción de gasto en la cuenta de origen
+                await saveTransaction({
+                    fecha: fecha,
+                    cuenta: cuentaOrigen,
+                    descripcion: `Transferencia a ${cuentaDestino}: ${descripcion}`,
+                    tipo: 'Movimiento',
+                    tipoMovimiento: 'Gasto',
+                    categoria: 'Movimiento entre cuentas',
+                    cantidad: -cantidad
+                });
+
+                // Transacción de ingreso en la cuenta de destino
+                await saveTransaction({
+                    fecha: fecha,
+                    cuenta: cuentaDestino,
+                    descripcion: `Transferencia de ${cuentaOrigen}: ${descripcion}`,
+                    tipo: 'Movimiento',
+                    tipoMovimiento: 'Ingreso',
+                    categoria: 'Movimiento entre cuentas',
+                    cantidad: cantidad
+                });
+            } else if (tipo === 'PagoTarjeta') {
+                const cuentaDestino = "Banco del Reserva Tarjeta Credito";
+
+                 // Transacción de gasto en la cuenta de origen
+                await saveTransaction({
+                    fecha: fecha,
+                    cuenta: cuentaOrigen,
+                    descripcion: `Pago a tarjeta de crédito (${cuentaDestino}): ${descripcion}`,
+                    tipo: 'PagoTarjeta',
+                    tipoMovimiento: 'Gasto',
+                    categoria: 'Pago Tarjeta',
+                    cantidad: -cantidad
+                });
+
+                // Transacción de ingreso en la cuenta de la tarjeta
+                await saveTransaction({
+                    fecha: fecha,
+                    cuenta: cuentaDestino,
+                    descripcion: `Pago recibido de ${cuentaOrigen}: ${descripcion}`,
+                    tipo: 'PagoTarjeta',
+                    tipoMovimiento: 'Ingreso',
+                    categoria: 'Pago Tarjeta',
+                    cantidad: cantidad
+                });
+
+            } else { // Standard Ingreso or Gasto
+                const transaction = {
+                    fecha: fecha,
+                    cuenta: cuentaOrigen,
+                    descripcion: descripcion,
+                    tipo: tipo,
+                    categoria: categoria,
+                    cantidad: tipo === 'Gasto' ? -cantidad : cantidad
+                };
+                await saveTransaction(transaction);
+            }
+            
+            transactionForm.reset();
+            categoriaSelect.innerHTML = '<option value="">Seleccione...</option>';
+            cuentaDestinoContainer.classList.add('hidden');
+        });
+        
+        // Render transactions table
+        function renderTransactionsTable() {
+            transactionTable.innerHTML = '';
+            // Sort by date, or use timestamp for more accuracy
+            const sortedTransactions = [...allTransactions].sort((a, b) => {
+                const dateA = new Date(a.fecha);
+                const dateB = new Date(b.fecha);
+                return dateB - dateA;
+            });
+
+            sortedTransactions.forEach(t => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50 transition-colors duration-100";
+
+                let cantidadClass;
+                let tipoDisplay;
+
+                if (t.tipo === 'Movimiento' || t.tipo === 'PagoTarjeta') {
+                    cantidadClass = t.tipoMovimiento === 'Ingreso' ? 'text-green-600' : 'text-red-600';
+                    tipoDisplay = t.tipoMovimiento === 'Ingreso' ? 'Ingreso' : 'Gasto';
+                } else {
+                    cantidadClass = t.tipo === 'Ingreso' ? 'text-green-600' : 'text-red-600';
+                    tipoDisplay = t.tipo;
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${t.fecha}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${t.cuenta}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${t.descripcion}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${t.categoria}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${cantidadClass}">${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(t.cantidad)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-red-600 hover:text-red-900" data-id="${t.id}">Eliminar</button>
+                    </td>
+                `;
+                row.querySelector('button').addEventListener('click', () => deleteTransaction(t.id));
+                transactionTable.appendChild(row);
+            });
+        }
+        
+        // Update Conciliation section
+        function updateConciliacion() {
+            const totals = cuentas.reduce((acc, cuenta) => {
+                acc[cuenta] = { ingresos: 0, gastos: 0 };
+                return acc;
+            }, {});
+
+            allTransactions.forEach(t => {
+                if (t.tipo === 'Ingreso' || (t.tipo === 'Movimiento' && t.tipoMovimiento === 'Ingreso') || (t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Ingreso')) {
+                    totals[t.cuenta].ingresos += t.cantidad;
+                } else {
+                    totals[t.cuenta].gastos += t.cantidad;
+                }
+            });
+
+            cuentas.forEach(cuenta => {
+                const totalIngresos = totals[cuenta].ingresos;
+                const totalGastos = totals[cuenta].gastos;
+                const saldoInicial = saldosIniciales[cuenta] || 0;
+                const saldoProyectado = saldoInicial + totalIngresos + totalGastos;
+                
+                // Use the mapping to get the correct ID prefix
+                const idPrefix = cuentaIdMap[cuenta];
+                if (!idPrefix) {
+                    console.error("Error: Cuenta no encontrada en el mapeo de IDs:", cuenta);
+                    return;
+                }
+
+                document.getElementById(`${idPrefix}Ingresos`).textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(totalIngresos);
+                document.getElementById(`${idPrefix}Gastos`).textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(totalGastos);
+                document.getElementById(`${idPrefix}SaldoProyectado`).textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(saldoProyectado);
+                
+                const saldoRealInput = document.getElementById(`${idPrefix}SaldoReal`);
+                const diferenciaSpan = document.getElementById(`${idPrefix}Diferencia`);
+
+                // Update difference on input change
+                saldoRealInput.oninput = () => {
+                    const saldoReal = parseFloat(saldoRealInput.value) || 0;
+                    const diferencia = saldoReal - saldoProyectado;
+                    diferenciaSpan.textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(diferencia);
+                    diferenciaSpan.style.color = diferencia === 0 ? '#48bb78' : '#e53e3e';
+                };
+                
+                // Set initial saldo
+                document.getElementById(`${idPrefix}SaldoInicial`).textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(saldoInicial);
+                
+                // Trigger initial difference calculation if real balance is entered
+                if(saldoRealInput.value) saldoRealInput.dispatchEvent(new Event('input'));
+            });
+        }
+        
+        // Update Dashboard section
+        function updateDashboard() {
+            let totalIngresos = 0;
+            let totalGastos = 0;
+            
+            allTransactions.forEach(t => {
+                if (t.tipo === 'Ingreso' || (t.tipo === 'Movimiento' && t.tipoMovimiento === 'Ingreso') || (t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Ingreso')) {
+                    totalIngresos += t.cantidad;
+                } else {
+                    totalGastos += t.cantidad;
+                }
+            });
+            
+            const balanceNeto = totalIngresos + totalGastos;
+            
+            document.getElementById('totalIngresosMes').textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(totalIngresos);
+            document.getElementById('totalGastosMes').textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(totalGastos);
+            document.getElementById('balanceNeto').textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(balanceNeto);
+            document.getElementById('balanceNeto').style.color = balanceNeto >= 0 ? '#48bb78' : '#e53e3e';
+
+            // Update budget summary
+            let totalBudget = 0;
+            for (const category in monthlyBudgets) {
+                totalBudget += monthlyBudgets[category];
+            }
+            const remainingBudget = totalBudget + totalGastos; // totalGastos is negative
+            document.getElementById('totalBudget').textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(totalBudget);
+            document.getElementById('remainingBudget').textContent = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(remainingBudget);
+            document.getElementById('remainingBudget').style.color = remainingBudget >= 0 ? '#48bb78' : '#e53e3e';
+        }
+
+        // --- Budget Module Functions ---
+        function renderBudgetInputs() {
+            budgetsContainer.innerHTML = '';
+            gastosCategorias.forEach(category => {
+                const budgetAmount = monthlyBudgets[category] || 0;
+                const container = document.createElement('div');
+                container.className = "flex flex-col p-4 bg-gray-50 rounded-xl shadow-sm";
+                container.innerHTML = `
+                    <label for="budget-${category}" class="text-sm font-medium text-gray-600 mb-2">${category}</label>
+                    <input type="number" id="budget-${category}" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" value="${budgetAmount}">
+                `;
+                budgetsContainer.appendChild(container);
+            });
+        }
+
+        saveBudgetsBtn.addEventListener('click', async () => {
+            const newBudgets = {};
+            gastosCategorias.forEach(category => {
+                const input = document.getElementById(`budget-${category}`);
+                if (input && input.value) {
+                    newBudgets[category] = parseFloat(input.value);
+                }
+            });
+            await saveBudgets(newBudgets);
+        });
+
+        // Update budget progress bars on dashboard
+        function updateBudgetProgress() {
+            const gastosByCategoria = {};
+            allTransactions.forEach(t => {
+                if (t.tipo === 'Gasto' || (t.tipo === 'Movimiento' && t.tipoMovimiento === 'Gasto') || (t.tipo === 'PagoTarjeta' && t.tipoMovimiento === 'Gasto')) {
+                    const cantidad = Math.abs(t.cantidad); // always positive for expenses
+                    gastosByCategoria[t.categoria] = (gastosByCategoria[t.categoria] || 0) + cantidad;
+                }
+            });
+
+            const budgetProgressContainer = document.getElementById('budgetProgressContainer');
+            budgetProgressContainer.innerHTML = '';
+
+            gastosCategorias.forEach(category => {
+                const budget = monthlyBudgets[category] || 0;
+                const spent = gastosByCategoria[category] || 0;
+                
+                if (budget === 0 && spent === 0) return; // Skip if no budget or no spending
+
+                const percentage = budget > 0 ? (spent / budget) * 100 : (spent > 0 ? 100 : 0);
+                const progressWidth = Math.min(percentage, 100);
+                const progressColor = percentage > 100 ? 'bg-red-500' : 'bg-blue-500';
+                const textColor = percentage > 100 ? 'text-red-500' : 'text-blue-500';
+
+                const progressHtml = `
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium text-gray-700">${category}</span>
+                            <span class="text-sm font-bold ${textColor}">
+                                ${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(spent)} / ${new Intl.Number-Format('es-DO', { style: 'currency', currency: 'DOP' }).format(budget)}
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="h-2.5 rounded-full ${progressColor} transition-all duration-500" style="width: ${progressWidth}%"></div>
+                        </div>
+                    </div>
+                `;
+                budgetProgressContainer.innerHTML += progressHtml;
+            });
+        }
+
+        function renderUI() {
+            renderTransactionsTable();
+            updateConciliacion();
+            updateDashboard();
+            updateCharts();
+            renderBudgetInputs();
+            updateBudgetProgress();
+        }
+
+
+        // --- Gemini API Integration ---
+        const geminiAnalyzeBtn = document.getElementById('geminiAnalyzeBtn');
+        const geminiResultDiv = document.getElementById('geminiResult');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        geminiAnalyzeBtn.addEventListener('click', async () => {
+            // Prevent multiple clicks and show loading state
+            geminiAnalyzeBtn.disabled = true;
+            loadingSpinner.classList.remove('hidden');
+            geminiResultDiv.classList.add('hidden');
+            
+            try {
+                // Prepare transaction data for the LLM
+                const transactionSummary = allTransactions.map(t => {
+                    const tipo = t.tipo === 'Movimiento' ? `Movimiento (${t.tipoMovimiento})` : t.tipo;
+                    return `Fecha: ${t.fecha}, Cuenta: ${t.cuenta}, Tipo: ${tipo}, Categoria: ${t.categoria}, Cantidad: ${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(t.cantidad)}`;
+                }).join('\n');
+                
+                // Prompt for the LLM
+                const systemPrompt = "Actúa como un asesor financiero personal y amigable. Analiza los datos de transacciones proporcionados por el usuario y ofrece un resumen claro de sus hábitos de gasto. Identifica las categorías con los mayores gastos y proporciona consejos prácticos, personalizados y accionables para ayudarle a ahorrar dinero. Responde en español.";
+                const userQuery = `Mis transacciones recientes son:\n\n${transactionSummary}\n\nPor favor, analiza estos datos y dame un resumen y algunos consejos.`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    model: 'gemini-2.5-flash-preview-05-20',
+                    generationConfig: {
+                        responseMimeType: "text/plain",
+                    }
+                };
+
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (generatedText) {
+                    geminiResultDiv.querySelector('p').textContent = generatedText;
+                    geminiResultDiv.classList.remove('hidden');
+                } else {
+                    geminiResultDiv.querySelector('p').textContent = "Lo siento, no pude generar el análisis. Por favor, inténtalo de nuevo más tarde.";
+                    geminiResultDiv.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                geminiResultDiv.querySelector('p').textContent = "Ocurrió un error al conectar con el servicio de análisis. Por favor, asegúrate de que tienes transacciones registradas y vuelve a intentarlo.";
+                geminiResultDiv.classList.remove('hidden');
+            } finally {
+                // Hide loading spinner and enable button
+                loadingSpinner.classList.add('hidden');
+                geminiAnalyzeBtn.disabled = false;
+            }
+        });
+
+        // Initial render
+        window.onload = function() {
+            initializeCharts();
+            renderUI();
+        };
+    </script>
+</body>
+</html>
